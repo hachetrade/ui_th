@@ -11,7 +11,7 @@ CHECKBOX_OPTIONS = {
     'tipo articulo': ['Almacenable', 'Consumible', 'Servicio'],
     'Venta': ['Si', 'No'],
     'Rutas': ['Obtener Bajo Pedido (MTO)', 'Comprar', 'Fabricar'],
-    'Categoria': ['All', 'All / Materiales', 'All / Materiales / Accesorios', 'All / Materiales / Aceros', 'All / Materiales / Oxicorte', 'All / Materiales /Repuestos']
+    'Categoria': ['All', 'All / Materiales', 'All / Materiales / Accesorios', 'All / Materiales / Aceros', 'All / Materiales / Oxicorte', 'All / Producto Terminado / Repuestos']
 }
 
 common_headers = ['product_tag_ids', 'type', 'sale_ok',
@@ -21,7 +21,7 @@ common_headers = ['product_tag_ids', 'type', 'sale_ok',
 # Function to convert BOM PDF to Excel
 def populate_articulos_odoo(input_file, label_widget):
     headers = ['id', 'name', 'product_tag_ids', 'standard_price', 'type', 'sale_ok', 'seller_ids', 'seller_ids/price',
-               'route_ids', 'categ_id']
+               'route_ids', 'categ_id', 'seller_ids/min_qty']
     lines= []
 
     df = pd.read_excel(input_file)
@@ -37,6 +37,7 @@ def populate_articulos_odoo(input_file, label_widget):
         pop_line['seller_ids/price']= row['Precio unitario']
         pop_line['route_ids']= getattr(label_widget, 'Rutas', None)
         pop_line['categ_id']= getattr(label_widget, 'Categoria', None)
+        pop_line['seller_ids/min_qty']= 1
         lines.append(pop_line)
 
     df_final = pd.DataFrame(lines, columns=headers)
@@ -209,16 +210,18 @@ def upload_file(label_widget, choose, is_components_list=False):
         label_widget.file_path = file_path  # Store the file path
         # label_widget.icon_label = tk.Label(root, image=pdf_icon)
         # label_widget.icon_label.pack(side="left", padx=5)
-        if is_components_list:
-            ask_for_units(label_widget)
+
     match choose:
         case 1:
             upload_and_process_bom()
         case 2:
-            upload_and_process_cmo()
+            ask_for_units(label_widget)
+            upload_and_process_cmo(label_widget)
         case 3:
-            upload_and_process_ebakilan()
-
+            ask_for_units(label_widget)
+            upload_and_process_ebakilan(label_widget)
+        case _:
+            messagebox.showerror("Error", f"has elegido {choose}")
 
 
 #upload albaran excel
@@ -263,8 +266,9 @@ def upload_and_process_bom():
             else:
                 messagebox.showerror("Error", f"An error occurred: {errors}")
 
-def upload_and_process_cmo():
-    pdf_path = cmo_pdf_label.file_path
+def upload_and_process_cmo(label_widget):
+    print(label_widget.file_path, label_widget.units)
+    pdf_path = label_widget.file_path
     units = getattr(cmo_pdf_label, 'units', None)
     if pdf_path and units:
         output_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
@@ -273,8 +277,8 @@ def upload_and_process_cmo():
             messagebox.showinfo("Success", f"CMO components list processed and saved to {output_path}")
             cmo_excel_label.config(text=os.path.basename(output_path))
 
-def upload_and_process_ebakilan():
-    pdf_path = ebakilan_pdf_label.file_path
+def upload_and_process_ebakilan(label_widget):
+    pdf_path = label_widget.file_path
     units = getattr(ebakilan_pdf_label, 'units', None)
     if pdf_path and units:
         output_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
@@ -291,8 +295,8 @@ def create_app():
     # global pdf_icon
     global root
     root = tk.Tk()
-    root.title("PDF to Excel Converter")
-    root.geometry("600x700")  # Set window size
+    root.title("TH convertidor")
+    root.geometry("500x400")  # Set window size
 
     # Load images
     customer_logo = PhotoImage(file='logos/thlogo.png')
@@ -303,32 +307,32 @@ def create_app():
     # Display customer logo
     tk.Label(root, image=customer_logo).pack()
 
-    def show_bom_ui():
-        hide_all_frames()
-        bom_frame.pack(fill="both", expand=True)
-        bom_pdf_label.pack()
-        tk.Button(bom_frame, text="Upload BOM", command=lambda: upload_file(bom_pdf_label)).pack(pady=5)
-        tk.Button(bom_frame, text="Clear", command=lambda: clear_file(bom_pdf_label)).pack(pady=5)
-        tk.Button(bom_frame, text="Convert BOM to Excel", command=upload_and_process_bom).pack(pady=5)
-        bom_excel_label.pack()
-
-    def show_cmo_ui():
-        hide_all_frames()
-        cmo_frame.pack(fill="both", expand=True)
-        cmo_pdf_label.pack()
-        tk.Button(cmo_frame, text="Upload CMO", command=lambda: upload_file(cmo_pdf_label, is_components_list=True)).pack(pady=5)
-        tk.Button(cmo_frame, text="Clear", command=lambda: clear_file(cmo_pdf_label)).pack(pady=5)
-        tk.Button(cmo_frame, text="Convert CMO to Excel", command=upload_and_process_cmo).pack(pady=5)
-        cmo_excel_label.pack()
-
-    def show_ebakilan_ui():
-        hide_all_frames()
-        ebakilan_frame.pack(fill="both", expand=True)
-        ebakilan_pdf_label.pack()
-        tk.Button(ebakilan_frame, text="Upload EBAKILAN", command=lambda: upload_file(ebakilan_pdf_label, is_components_list=True)).pack(pady=5)
-        tk.Button(ebakilan_frame, text="Clear", command=lambda: clear_file(ebakilan_pdf_label)).pack(pady=5)
-        tk.Button(ebakilan_frame, text="Convert EBAKILAN to Excel", command=upload_and_process_ebakilan).pack(pady=5)
-        ebakilan_excel_label.pack()
+    # def show_bom_ui():
+    #     hide_all_frames()
+    #     bom_frame.pack(fill="both", expand=True)
+    #     bom_pdf_label.pack()
+    #     tk.Button(bom_frame, text="Upload BOM", command=lambda: upload_file(bom_pdf_label)).pack(pady=5)
+    #     tk.Button(bom_frame, text="Clear", command=lambda: clear_file(bom_pdf_label)).pack(pady=5)
+    #     tk.Button(bom_frame, text="Convert BOM to Excel", command=upload_and_process_bom).pack(pady=5)
+    #     bom_excel_label.pack()
+    #
+    # def show_cmo_ui():
+    #     hide_all_frames()
+    #     cmo_frame.pack(fill="both", expand=True)
+    #     cmo_pdf_label.pack()
+    #     tk.Button(cmo_frame, text="Upload CMO", command=lambda: upload_file(cmo_pdf_label, is_components_list=True)).pack(pady=5)
+    #     tk.Button(cmo_frame, text="Clear", command=lambda: clear_file(cmo_pdf_label)).pack(pady=5)
+    #     tk.Button(cmo_frame, text="Convert CMO to Excel", command=upload_and_process_cmo).pack(pady=5)
+    #     cmo_excel_label.pack()
+    #
+    # def show_ebakilan_ui():
+    #     hide_all_frames()
+    #     ebakilan_frame.pack(fill="both", expand=True)
+    #     ebakilan_pdf_label.pack()
+    #     tk.Button(ebakilan_frame, text="Upload EBAKILAN", command=lambda: upload_file(ebakilan_pdf_label, is_components_list=True)).pack(pady=5)
+    #     tk.Button(ebakilan_frame, text="Clear", command=lambda: clear_file(ebakilan_pdf_label)).pack(pady=5)
+    #     tk.Button(ebakilan_frame, text="Convert EBAKILAN to Excel", command=upload_and_process_ebakilan).pack(pady=5)
+    #     ebakilan_excel_label.pack()
 
     def hide_all_frames():
         bom_frame.pack_forget()
@@ -337,10 +341,10 @@ def create_app():
         import_articles_frame.pack_forget()
 
         # Main UI
-    tk.Label(root, text="Choose the process you want to execute:").pack(pady=10)
-    tk.Button(root, text="BOM Materials", command=lambda: upload_file(label_widget=bom_pdf_label, choose=1)).pack(pady=5)
-    tk.Button(root, text="CMO Components", command=show_cmo_ui).pack(pady=5)
-    tk.Button(root, text="EBAKILAN Components", command=show_ebakilan_ui).pack(pady=5)
+    tk.Label(root, text="Elige opción:").pack(pady=10)
+    tk.Button(root, text="CMO BOM pdf", command=lambda: upload_file(label_widget=bom_pdf_label, choose=1)).pack(pady=5)
+    tk.Button(root, text="CMO albarán pdf", command=lambda: upload_file(label_widget=cmo_pdf_label, choose=2)).pack(pady=5)
+    tk.Button(root, text="EBAKILAN albarán pdf", command=lambda: upload_file(label_widget=ebakilan_pdf_label, choose=3)).pack(pady=5)
     tk.Label(root, text="").pack(pady=10)
     tk.Button(root, text="Generar archivo de importación", command=lambda: upload_file_ex(import_articles_label), bg="#f3f2f1", fg="blue").pack(pady=5)
 
@@ -358,7 +362,7 @@ def create_app():
     bom_excel_label = tk.Label(bom_frame, text="", fg="green")
     cmo_excel_label = tk.Label(cmo_frame, text="", fg="green")
     import_articles_label = tk.Label(import_articles_frame, text="")
-    # ebakilan_excel_label = tk.Label(ebakilan_frame, text="", fg="green")
+    ebakilan_excel_label = tk.Label(ebakilan_frame, text="", fg="green")
 
     root.mainloop()
 
