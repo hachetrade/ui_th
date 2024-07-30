@@ -201,16 +201,25 @@ def convert_ebakilan_to_excel(pdf_path, output_path, uds_albaran):
     df.to_excel(output_path, index=False)
 
 # Tkinter UI functions for file management
-def upload_file(label_widget, is_components_list=False):
+def upload_file(label_widget, choose, is_components_list=False):
     file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
     if file_path:
         file_name = os.path.basename(file_path)
         label_widget.config(text=file_name)
         label_widget.file_path = file_path  # Store the file path
-        label_widget.icon_label = tk.Label(root, image=pdf_icon)
-        label_widget.icon_label.pack(side="left", padx=5)
+        # label_widget.icon_label = tk.Label(root, image=pdf_icon)
+        # label_widget.icon_label.pack(side="left", padx=5)
         if is_components_list:
             ask_for_units(label_widget)
+    match choose:
+        case 1:
+            upload_and_process_bom()
+        case 2:
+            upload_and_process_cmo()
+        case 3:
+            upload_and_process_ebakilan()
+
+
 
 #upload albaran excel
 def upload_file_ex(label_widget):
@@ -221,8 +230,8 @@ def upload_file_ex(label_widget):
         label_widget.config(text=file_name)
         label_widget.just_name = file_name_without_extension
         label_widget.file_path = file_path  # Store the file path
-        label_widget.icon_label = tk.Label(root, image=pdf_icon)
-        label_widget.icon_label.pack(side="left", padx=5)
+        # label_widget.icon_label = tk.Label(root, image=pdf_icon)
+        # label_widget.icon_label.pack(side="left", padx=5)
         common_variables(label_widget)
 
 
@@ -276,10 +285,10 @@ def upload_and_process_ebakilan():
 
 # Tkinter UI setup
 def create_app():
-    global common_headers
+    global common_headers, choose
     global bom_pdf_label, cmo_pdf_label, ebakilan_pdf_label, import_articles_label
     global bom_excel_label, cmo_excel_label, ebakilan_excel_label
-    global pdf_icon
+    # global pdf_icon
     global root
     root = tk.Tk()
     root.title("PDF to Excel Converter")
@@ -287,9 +296,9 @@ def create_app():
 
     # Load images
     customer_logo = PhotoImage(file='logos/thlogo.png')
-    pdf_image = Image.open('logos/pdf_icon.png')
-    pdf_image = pdf_image.resize((10, 10), Image.Resampling.LANCZOS)  # Resize to 10 pixels
-    pdf_icon = ImageTk.PhotoImage(pdf_image)
+    # pdf_image = Image.open('logos/pdf_icon.png')
+    # pdf_image = pdf_image.resize((10, 10), Image.Resampling.LANCZOS)  # Resize to 10 pixels
+    # pdf_icon = ImageTk.PhotoImage(pdf_image)
 
     # Display customer logo
     tk.Label(root, image=customer_logo).pack()
@@ -329,7 +338,7 @@ def create_app():
 
         # Main UI
     tk.Label(root, text="Choose the process you want to execute:").pack(pady=10)
-    tk.Button(root, text="BOM Materials", command=show_bom_ui).pack(pady=5)
+    tk.Button(root, text="BOM Materials", command=lambda: upload_file(label_widget=bom_pdf_label, choose=1)).pack(pady=5)
     tk.Button(root, text="CMO Components", command=show_cmo_ui).pack(pady=5)
     tk.Button(root, text="EBAKILAN Components", command=show_ebakilan_ui).pack(pady=5)
     tk.Label(root, text="").pack(pady=10)
