@@ -1,3 +1,4 @@
+import sys
 import os
 import pdfplumber
 import pandas as pd
@@ -16,6 +17,21 @@ CHECKBOX_OPTIONS = {
 
 common_headers = ['product_tag_ids', 'type', 'sale_ok',
                'route_ids', 'categ_id']
+
+def resource_path(relative_path):
+    """ Get the absolute path to a resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # If the application is not bundled with PyInstaller, this will be the base path
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
+
+
+
 
 
 # Function to convert BOM PDF to Excel
@@ -299,40 +315,10 @@ def create_app():
     root.geometry("500x400")  # Set window size
 
     # Load images
-    customer_logo = PhotoImage(file='logos/thlogo.png')
-    # pdf_image = Image.open('logos/pdf_icon.png')
-    # pdf_image = pdf_image.resize((10, 10), Image.Resampling.LANCZOS)  # Resize to 10 pixels
-    # pdf_icon = ImageTk.PhotoImage(pdf_image)
-
-    # Display customer logo
-    tk.Label(root, image=customer_logo).pack()
-
-    # def show_bom_ui():
-    #     hide_all_frames()
-    #     bom_frame.pack(fill="both", expand=True)
-    #     bom_pdf_label.pack()
-    #     tk.Button(bom_frame, text="Upload BOM", command=lambda: upload_file(bom_pdf_label)).pack(pady=5)
-    #     tk.Button(bom_frame, text="Clear", command=lambda: clear_file(bom_pdf_label)).pack(pady=5)
-    #     tk.Button(bom_frame, text="Convert BOM to Excel", command=upload_and_process_bom).pack(pady=5)
-    #     bom_excel_label.pack()
-    #
-    # def show_cmo_ui():
-    #     hide_all_frames()
-    #     cmo_frame.pack(fill="both", expand=True)
-    #     cmo_pdf_label.pack()
-    #     tk.Button(cmo_frame, text="Upload CMO", command=lambda: upload_file(cmo_pdf_label, is_components_list=True)).pack(pady=5)
-    #     tk.Button(cmo_frame, text="Clear", command=lambda: clear_file(cmo_pdf_label)).pack(pady=5)
-    #     tk.Button(cmo_frame, text="Convert CMO to Excel", command=upload_and_process_cmo).pack(pady=5)
-    #     cmo_excel_label.pack()
-    #
-    # def show_ebakilan_ui():
-    #     hide_all_frames()
-    #     ebakilan_frame.pack(fill="both", expand=True)
-    #     ebakilan_pdf_label.pack()
-    #     tk.Button(ebakilan_frame, text="Upload EBAKILAN", command=lambda: upload_file(ebakilan_pdf_label, is_components_list=True)).pack(pady=5)
-    #     tk.Button(ebakilan_frame, text="Clear", command=lambda: clear_file(ebakilan_pdf_label)).pack(pady=5)
-    #     tk.Button(ebakilan_frame, text="Convert EBAKILAN to Excel", command=upload_and_process_ebakilan).pack(pady=5)
-    #     ebakilan_excel_label.pack()
+    logo_path = resource_path("logos/thlogo.png")
+    customer_logo = PhotoImage(file=logo_path)
+    logo_label = tk.Label(root, image=customer_logo)
+    logo_label.pack()
 
     def hide_all_frames():
         bom_frame.pack_forget()
