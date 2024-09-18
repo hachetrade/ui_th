@@ -30,10 +30,6 @@ def resource_path(relative_path):
 
 
 
-
-
-
-
 # Function to convert BOM PDF to Excel
 def populate_articulos_odoo(input_file, label_widget):
     headers = ['id', 'name', 'product_tag_ids', 'standard_price', 'type', 'sale_ok', 'seller_ids', 'seller_ids/price',
@@ -188,6 +184,34 @@ def convert_cmo_to_excel(pdf_path, output_path, uds_albaran):
     df = pd.DataFrame(all_lines_match, columns=headers)
     df.to_excel(output_path, index=None)
 
+# presupuesto cmo to excel
+def convert_cmo_pres(pdf_path, output_path, uds_albaran):
+    headers = ['#', 'Cantidad', 'Referencia', 'Precio unitario', 'Proveedor']
+    all_lines_match = []
+    pattern_01 = r'^(\d{3}) (\d+)'
+    pattern_03 = r'^\d{3} \d+ (.+?) S'
+    pattern_04 = r'(\d{1,3}(?:,\d{2}) €)'
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            lines = text.split('\n')
+            for line in lines:
+                matches = re.match(pattern_01, line)
+                if matches:
+                    ref = matches.group(1)
+                    Proveedor = 'CORTES METALURGICOS OVIEDO, S.L.'
+                    cantidad = int(matches.group(2)) // uds_albaran
+                    match_articulo = re.search(pattern_03, line)
+                    match_precio = re.search(pattern_04, line)
+                    if match_articulo and match_precio:
+                        articulo = match_articulo.group(1)
+                        precio = float((match_precio.group(1).split()[0].replace(',', '.')))
+                        all_lines_match.append([ref, cantidad, articulo, precio, Proveedor])
+
+    df = pd.DataFrame(all_lines_match, columns=headers)
+    df.to_excel(output_path, index=None)
+
 # Function to convert EBAKILAN PDF to Excel
 def convert_ebakilan_to_excel(pdf_path, output_path, uds_albaran):
     headers = ['#', 'Referencia', 'Cantidad', 'Precio unitario', 'Proveedor']
@@ -234,6 +258,9 @@ def upload_file(label_widget, choose, is_components_list=False):
             ask_for_units(label_widget)
             upload_and_process_cmo(label_widget)
         case 3:
+            ask_for_units(label_widget)
+            upload_and_process_cmo_pres(label_widget)
+        case 4:
             ask_for_units(label_widget)
             upload_and_process_ebakilan(label_widget)
         case _:
@@ -293,6 +320,17 @@ def upload_and_process_cmo(label_widget):
             messagebox.showinfo("Success", f"CMO components list processed and saved to {output_path}")
             cmo_excel_label.config(text=os.path.basename(output_path))
 
+def upload_and_process_cmo_pres(label_widget):
+    print(label_widget.file_path, label_widget.units)
+    pdf_path = label_widget.file_path
+    units = getattr(cmo_pdf_label, 'units', None)
+    if pdf_path and units:
+        output_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+        if output_path:
+            convert_cmo_pres(pdf_path, output_path, units)
+            messagebox.showinfo("Success", f"CMO components list processed and saved to {output_path}")
+            cmo_excel_pres_label.config(text=os.path.basename(output_path))
+
 def upload_and_process_ebakilan(label_widget):
     pdf_path = label_widget.file_path
     units = getattr(ebakilan_pdf_label, 'units', None)
@@ -306,8 +344,8 @@ def upload_and_process_ebakilan(label_widget):
 # Tkinter UI setup
 def create_app():
     global common_headers, choose
-    global bom_pdf_label, cmo_pdf_label, ebakilan_pdf_label, import_articles_label
-    global bom_excel_label, cmo_excel_label, ebakilan_excel_label
+    global bom_pdf_label, cmo_pdf_label, ebakilan_pdf_label, import_articles_label, cmo_pres_label
+    global bom_excel_label, cmo_excel_label, ebakilan_excel_label, cmo_excel_pres_label
     # global pdf_icon
     global root
     root = tk.Tk()
@@ -323,6 +361,7 @@ def create_app():
     def hide_all_frames():
         bom_frame.pack_forget()
         cmo_frame.pack_forget()
+        cmo_pres_frame.pack_forget()
         ebakilan_frame.pack_forget()
         import_articles_frame.pack_forget()
 
@@ -330,13 +369,15 @@ def create_app():
     tk.Label(root, text="Elige opción:").pack(pady=10)
     tk.Button(root, text="CMO BOM pdf", command=lambda: upload_file(label_widget=bom_pdf_label, choose=1)).pack(pady=5)
     tk.Button(root, text="CMO albarán pdf", command=lambda: upload_file(label_widget=cmo_pdf_label, choose=2)).pack(pady=5)
-    tk.Button(root, text="EBAKILAN albarán pdf", command=lambda: upload_file(label_widget=ebakilan_pdf_label, choose=3)).pack(pady=5)
+    tk.Button(root, text="CMO presupuesto pdf", command=lambda: upload_file(label_widget=cmo_pres_label, choose=3)).pack(pady=5)
+    tk.Button(root, text="EBAKILAN albarán pdf", command=lambda: upload_file(label_widget=ebakilan_pdf_label, choose=4)).pack(pady=5)
     tk.Label(root, text="").pack(pady=10)
     tk.Button(root, text="Generar archivo de importación", command=lambda: upload_file_ex(import_articles_label), bg="#f3f2f1", fg="blue").pack(pady=5)
 
     # Frames for different processes
     bom_frame = tk.Frame(root)
     cmo_frame = tk.Frame(root)
+    cmo_pres_frame = tk.Frame(root)
     ebakilan_frame = tk.Frame(root)
     import_articles_frame = tk.Frame(root)
 
@@ -344,9 +385,11 @@ def create_app():
     # Labels for displaying selected files and results
     bom_pdf_label = tk.Label(bom_frame, text="", compound='left', fg="blue")
     cmo_pdf_label = tk.Label(cmo_frame, text="", compound='left', fg="blue")
+    cmo_pres_label = tk.Label(cmo_pres_frame, text="", compound='left', fg='blue')
     ebakilan_pdf_label = tk.Label(ebakilan_frame, text="", compound='left', fg="blue")
     bom_excel_label = tk.Label(bom_frame, text="", fg="green")
     cmo_excel_label = tk.Label(cmo_frame, text="", fg="green")
+    cmo_excel_pres_label = tk.Label(cmo_pres_frame, text="", fg="green")
     import_articles_label = tk.Label(import_articles_frame, text="")
     ebakilan_excel_label = tk.Label(ebakilan_frame, text="", fg="green")
 
